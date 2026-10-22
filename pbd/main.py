@@ -9,21 +9,28 @@ pygame.display.set_caption("PBD")
 screen = pygame.display.set_mode((width, height))
 clock = pygame.time.Clock()
 
+# Restart button
+
 font = pygame.font.SysFont("verdana", 16)
 button_rect = pygame.Rect(20, 20, 100, 40)
 button_color = (96, 96, 96)
 text_color = (255, 255, 255)
 
 sim_min_width = 2.0
-cScale = min(width, height) / sim_min_width
-sim_width = width / cScale
-sim_height = height / cScale
+cScale = min(width, height) / sim_min_width # how many pixels are equal to 1 meter
+sim_width = width / cScale # width in meters (scaled)
+sim_height = height / cScale # height in meter (scaled)
+
+# Scaling functions to establish new coordinate system - (0,0) at the bottom left corner instead of upper one
+
 
 def c_x(x):
     return int(x * cScale)
 
 def c_y(y):
     return int(height - y * cScale)
+
+# Class representing a 2D vector with basic operations
 
 class Vector2:
     def __init__(self, x = 0.0, y = 0.0):
@@ -68,8 +75,7 @@ class Vector2:
     def dot(self, v):
         return self.x * v.x + self.y * v.y
 
-    def perp(self):
-        return Vector2(-self.y, self.x)
+# Class representing a singular Bead in PBD
 
 class Bead:
     def __init__(self, radius, mass, pos):
@@ -79,11 +85,18 @@ class Bead:
         self.prevPos = pos.clone()
         self.vel = Vector2()
 
+    # 1) Velocity update - gravity * dt
+    # 2) Storing old position in prevPos
+    # 3) Calculating new position - x = x + v * dt
     def start_step(self, dt, gravity):
         self.vel.add(gravity, dt)
         self.prevPos.set_vec(self.pos)
         self.pos.add(self.vel, dt)
 
+    # 1) Vector from the center of the wire to the bead (and its length)
+    # 2) Normalization of said vector, so it will just give an info about the direction
+    # 3) Positiong error - how much the bead is away from the wire
+    # 4) Modifying bead position, moving it along the radius back on the wire
     def keep_on_wire(self, center, radius):
         dir_vec = Vector2().subtract_vector(self.pos, center)
         length = dir_vec.length()
@@ -93,6 +106,7 @@ class Bead:
         lambda_val = radius - length
         self.pos.add(dir_vec, lambda_val)
 
+    # Calculating new velocity - distance / dt
     def end_step(self, dt):
         self.vel.subtract_vector(self.pos, self.prevPos)
         self.vel.scale(1.0 / dt)
@@ -106,6 +120,7 @@ physics_scene = {
     "beads": []
 }
 
+# Creation of 5 beads that are placed on the wire
 def setup_scene():
     physics_scene["beads"] = []
     num_beads = 5
@@ -123,17 +138,17 @@ def setup_scene():
         r = 0.05 + random.random() * 0.1
 
 def handle_bead_bead_collision(bead1, bead2):
-    restitution = 1.0
-    dir_vec = Vector2().subtract_vector(bead2.pos, bead1.pos)
+    restitution = 1.0 # no energy loss when collision happen
+    dir_vec = Vector2().subtract_vector(bead2.pos, bead1.pos) # distance between the pos of both beads
     d = dir_vec.length()
 
     # no collision, if the distance longer than sum of both radius
     if d == 0.0 or d > bead1.radius + bead2.radius:
         return
 
-    dir_vec.scale(1.0 / d)
+    dir_vec.scale(1.0 / d) # normalized vector
 
-    # position correction
+    # position correction - pushing the beads back, down the line thats connecting their centers
     corr = (bead1.radius + bead2.radius - d) / 2.0
     bead1.pos.add(dir_vec, -corr)
     bead2.pos.add(dir_vec, corr)
@@ -147,11 +162,16 @@ def handle_bead_bead_collision(bead1, bead2):
     new_v1 = (m1 * v1 + m2 * v2 - m2 * (v1 - v2) * restitution) / (m1 + m2)
     new_v2 = (m1 * v1 + m2 * v2 - m1 * (v2 - v1) * restitution) / (m1 + m2)
 
+    # velocity change that happens bcs of the collision, for both beads
     bead1.vel.add(dir_vec, new_v1 - v1)
     bead2.vel.add(dir_vec, new_v2 - v2)
 
 def simulate():
-    sdt = physics_scene["dt"] / physics_scene["num_steps"]
+    sdt = physics_scene["dt"] / physics_scene["num_steps"] # small substeps
+    # in every substep there is full PBD sequence done for all the beads
+    #
+    # Why the substeps?
+    # Euler's integration is more precise and the beads move smoothly
 
     # substeps
     for step in range(physics_scene["num_steps"]):
