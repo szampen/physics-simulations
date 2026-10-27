@@ -23,7 +23,6 @@ sim_height = height / cScale # height in meter (scaled)
 
 # Scaling functions to establish new coordinate system - (0,0) at the bottom left corner instead of upper one
 
-
 def c_x(x):
     return int(x * cScale)
 
