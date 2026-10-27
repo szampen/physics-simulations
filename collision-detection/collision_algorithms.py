@@ -59,7 +59,7 @@ def expand_bits(v):
     return v
 
 
-def morton3d(x, y, z, world_size=100.0):
+def morton3d(x, y, z, world_size=50.0):
     """
     Calculates Morton code for coordinates in world [-world_size/2, world_size/2]^3
 
@@ -102,7 +102,7 @@ def morton3d(x, y, z, world_size=100.0):
     return xx | (yy << 1) | (zz << 2)
 
 
-def build_bvh(boxes, world_size=100.0):
+def build_bvh(boxes, world_size=50.0):
     """
     Builds BVH tree:
     Sorting by Morton code and dividing in the middle
